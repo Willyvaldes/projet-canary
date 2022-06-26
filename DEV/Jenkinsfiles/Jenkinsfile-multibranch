@@ -1,6 +1,6 @@
 pipeline {
     agent { 
-        label 'node1 || node2 || node3 || node4 || node5'
+        label 'jenkins-node'
          }
    
   
@@ -44,7 +44,7 @@ stage('build ') {
             steps {
                sh '''
                cd $WORKSPACE/DEV
-           docker build -t devopseasylearning2021/canary:${BUILD_NUMBER} .
+           docker build -t kewiv/canary:${BUILD_NUMBER} .
                '''
             }
         }
@@ -80,7 +80,6 @@ stage('build ') {
 
 
     }
-
 
 
 
