@@ -1,6 +1,6 @@
 pipeline {
     agent { 
-        label 'node-valdes'
+        label 'jenkins-node'
          }
    
   
@@ -8,30 +8,24 @@ pipeline {
      artifactNumToKeepStr: '', daysToKeepStr: '3', numToKeepStr: '5'))
       disableConcurrentBuilds() }
       
-    environment {
+       environment {
 		DOCKERHUB_CREDENTIALS=credentials('my-dockerhub')
 	}
 
 
     stages {
 
-
-           stage('Setup parameters') {
+       stage('Setup parameters') {
             steps {
                 script { 
                     properties([
                         parameters([
-                            string(name: 'WARNTIME',
-                             defaultValue: '0',
-                            description: '''Warning time (in minutes) before starting upgrade'''),
-
-                             
-                         
-                          string(
-                                defaultValue: 'develop',
-                                name: 'Please_leave_this_section_as_it_is',
+                           string(
+                                defaultValue: 'main', 
+                                name: 'BranchName', 
                                 trim: true
-                            ),
+                            )
+                            
                         ])
                     ])
                 }
@@ -39,15 +33,23 @@ pipeline {
         }
 
 
-        //////////////////////////////////
-       stage('warning') {
-      steps {
-        script {
-            notifyUpgrade(currentBuild.currentResult, "WARNING")
-            sleep(time:env.WARNTIME, unit:"MINUTES")
+ stage(' cloning') {
+   
+
+            steps {
+               sh '''
+               rm -rf ./*
+	       git clone -b $BranchName https://github.com/Willyvaldes/projet-canary.git
+         mv  S2-pipeline01/* .
+         rm -rf S2-pipeline01
+               '''
+            }
         }
-      }
-    }
+
+
+
+
+
 
 
        stage('SonarQube analysis') {
@@ -76,106 +78,85 @@ pipeline {
               }
             }
           }
-     
 
 stage('build ') {
-         agent {
-  label "jenkins-node"
-    }
+
             steps {
                sh '''
-               COMMIT=$(git rev-parse --short=5 HEAD)
-               cd $WORKSPACE/DEV
-           docker build -t devopseasylearning2021/canary-dev:$COMMIT .
+               ls -l
+               cd DEV
+           docker build -t kewiv/canary:${BUILD_NUMBER} .
                '''
             }
         }
        
 
-      stage('Docker Login') {
-               agent {
-  label "jenkins-node"
-    }
-			steps {
-				sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
-			}
-		}
 
-           
+    stage('Deploy with docker ') {
+            steps {
+               sh '''
+rm -rf docker-compose.yml
+cat <<EOF > docker-compose.yml
+version: "3.3"
+services:
+  canary:
+    image: kewiv/canary:${BUILD_NUMBER} 
+    expose:
+      - 80
+    ports:
+      - "9090:80"
+    hostname: canary
+    container_name: canary
+    restart: always 
+EOF
+
+ls -l 
+cat docker-compose.yml 
+docker-compose up -d
+docker-compose ps 
+
+
+               curl ifconfig.co 
+                '''
+            }
+        }
+
+
+
+
+
+    }
             
 
-     stage('Docker push ') {
-                agent {
-  label "jenkins-node"
+   post {
+   
+   success {
+      slackSend (channel: '#development-alerts', color: 'good', message: "SUCCESSFUL: Application CANARY the Branch tested is  $BranchName Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
     }
-            steps {
-               sh '''
-               COMMIT=`git rev-parse --short=5 HEAD`
-             docker push  devopseasylearning2021/canary-dev:$COMMIT 
-                '''
-            }
-        }
 
-
-
-
-         stage('update charts ') {
-                agent {
-  label 'node-valdes'
+ 
+    unstable {
+      slackSend (channel: '#development-alerts', color: 'warning', message: "UNSTABLE: Application CANARY the Branch tested is  $BranchName Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
     }
-            steps {
-               sh '''
-            cd $WORKSPACE/DEV
-            bash -x update-charts.sh
-                '''
-            }
-        }
 
-    }        
-
-     post {
-    always {
-      script {
-        notifyUpgrade(currentBuild.currentResult, "POST")
-      }
+    failure {
+      slackSend (channel: '#development-alerts', color: '#FF0000', message: "FAILURE: Application CANARY the Branch tested is  $BranchNameJob '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
     }
+   
     cleanup {
       deleteDir()
     }
-  }
-}   
-
-
-
-
-
-def notifyUpgrade(String buildResult, String whereAt) {
-  if (Please_leave_this_section_as_it_is == 'origin/develop') {
-    channel = 'development-alerts'
-  } else {
-    channel = 'development-alerts'
-  }
-  if (buildResult == "SUCCESS") {
-    switch(whereAt) {
-      case 'WARNING':
-        slackSend(channel: channel,
-                color: "#439FE0",
-                message: "DEVELOPMENT-Canary: Upgrade starting in ${env.WARNTIME} minutes @ ${env.BUILD_URL}")
-        break
-    case 'STARTING':
-      slackSend(channel: channel,
-                color: "good",
-                message: "DEVELOPMENT-Canary: Starting upgrade @ ${env.BUILD_URL}")
-      break
-    default:
-        slackSend(channel: channel,
-                color: "good",
-                message: "DEVELOPMENT-Canary: Upgrade completed successfully @ ${env.BUILD_URL}")
-        break
-    }
-  } else {
-    slackSend(channel: channel,
-              color: "danger",
-              message: "DEVELOPMENT-Canary: Upgrade was not successful. Please investigate it immediately.  @ ${env.BUILD_URL}")
-    }
 }
+
+
+
+
+    
+
+
+
+    }
+
+
+
+
