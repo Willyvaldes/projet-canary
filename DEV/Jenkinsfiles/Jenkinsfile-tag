@@ -1,6 +1,6 @@
 pipeline {
     agent { 
-        label 'node1 || node2 || node3'
+        label 'jenkins-node'
          }
    
   
@@ -9,7 +9,7 @@ pipeline {
       disableConcurrentBuilds() }
       
        environment {
-		DOCKERHUB_CREDENTIALS=credentials('dockerhub')
+		DOCKERHUB_CREDENTIALS=credentials('my-dockerhub')
 	}
 
 
@@ -47,9 +47,9 @@ pipeline {
             steps {
                sh '''
                rm -rf ./*
-	       git clone -b $BranchName git@github.com:devopseasylearning/S2-pipeline01.git
+	       git clone -b $BranchName git@github.com:Willyvaldes/projet-canary.git
            ls -l
-         cd S2-pipeline01/DEV
+         cd projet-canary/DEV
          ls -l
                '''
             }
@@ -65,7 +65,7 @@ stage('checking ') {
 
             steps {
                sh '''
-            cd S2-pipeline01/DEV
+            cd projet-canary/DEV
               echo ${TAG} > file.txt
               ls -l 
               bash -x check.sh
@@ -81,8 +81,8 @@ stage('checking ') {
                sh '''
 echo  '[url "git@github.com:"]' >> ~/.gitconfig 
  echo 'insteadOf = https://github.com/' >> ~/.gitconfig 
- git config --global user.email "info@devopseasylearning.com"
-  git config --global user.name "devopseasylearning"
+ git config --global user.email "willyvaldesk@gmail.com"
+  git config --global user.name "Willyvaldes"
 git tag -a $TAG -m "Tag generated from jenkins"
 git tag
 git push origin $TAG
@@ -132,7 +132,6 @@ git push origin $TAG
 
 
     }
-
 
 
 
