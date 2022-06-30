@@ -1,9 +1,5 @@
 pipeline {
-    agent any
-    {
-       
-        //label 'jenkins-node'
-         }
+    
    
   
     options { buildDiscarder(logRotator(artifactDaysToKeepStr: '',
