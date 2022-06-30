@@ -1,5 +1,9 @@
 pipeline {
     agent any
+    {
+       
+        //label 'jenkins-node'
+         }
    
   
     options { buildDiscarder(logRotator(artifactDaysToKeepStr: '',
@@ -129,7 +133,7 @@ docker-compose ps
    post {
    
    success {
-      slackSend (channel: '#development-alerts', color: 'good', message: "SUCCESSFUL: Application CANARY the Branch tested by "${BUILD_USER}" is  $BranchName Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
+   //   slackSend (channel: '#development-alerts', color: 'good', message: "SUCCESSFUL: Application CANARY the Branch tested by "${BUILD_USER}" is  $BranchName Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})")
     }
 
  
